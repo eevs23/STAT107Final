@@ -1,0 +1,123 @@
+---
+title: "11_DataCleaning"
+output: html_document
+---
+
+```{r}
+source("00_requirements.R")
+
+anes_raw <- read_csv("anes.csv")
+
+#renaming relevant columns and selecting them to go into cleaned set
+anes_cleaned <- anes_raw %>%
+  select(
+    # outcomes
+  vote_pres = V242067,
+  vote_house = V242075,
+  
+  # demographics 
+  gender = V241551, 
+  hispanic = V241499, 
+  race_summary = V241501x, #summary of what they ID as 
+  mena_origin = V241502, # (1 = yes, 2 = no; middle eastern race check)
+  education_level = V241463, # years of education  
+  
+  # other relevant variables
+  age = V241458x, # their actual age
+  party_id = V241221, # democrat, republican, or independent/none
+  social_class = V242337 # lower class to upper class range 
+  ) %>%
+  
+  # filtering out missing responses 
+  # filtering to dem and rep only
+  filter(vote_pres %in% c(1,2)) %>%
+  
+  # making data readable for easy analysis
+  mutate( 
+    vote_pres = factor(vote_pres, labels=c('Democrat',"Republican")),
+    vote_house = case_when(
+      vote_house == 1 ~ "Democrat",
+      vote_house == 2 ~ "Republican",
+      TRUE ~ "Other"
+    ),
+    # gender
+    gender = case_when(
+      gender == 1 ~ "Man",
+      gender == 2 ~ "Woman", 
+      gender == 3 ~ "Nonbinary",
+      TRUE ~ "Other"
+    ),
+    
+    # social class coding
+    social_class = case_when(
+      social_class == 1 ~ "Lower Class",
+      social_class == 2 ~ "Working Class",
+      social_class == 3 ~ "Middle Class",
+      social_class == 4 ~ "Upper Class",
+      TRUE ~ NA_character_
+    ),
+    
+    # age 
+    age = case_when(
+      age < 0 ~ NA_real_, # if less than 0, then NA (refused to respond)
+      TRUE ~ age # leaving everything else 
+    ),
+    #race
+    # coding 1 to 6
+    race_code = case_when(
+      mena_origin == 1 ~ 5, # mena = 5 (mena = middle eastern/north african)
+      race_summary == 1 ~ 1, #white = 1
+      race_summary == 2 ~ 2, # black = black 
+      race_summary == 4 ~ 3, # hispanic = 3
+      race_summary == 3 ~ 4, # asian = 4
+      race_summary >= 5 ~ 6, # multi/other = 6
+      TRUE ~ NA_real_
+    ),
+    # labeling 
+    race = case_when(
+      race_code == 1 ~ "White",
+      race_code == 2 ~ "Black",
+      race_code == 3 ~ "Hispanic",
+      race_code == 4 ~ "Asian",
+      race_code == 5 ~ "Middle Eastern/North African",
+      race_code == 6 ~ "Multiracial/Other",
+      TRUE ~ NA_character_
+    ),
+    
+    race = factor(race, levels = c("White","Black","Hispanic","Asian", "Middle Eastern/North African", "Multiracial/Other")),
+    
+    #education levels
+    education_level = case_when(
+      education_level <= 8 ~ "Less than HS",
+      education_level == 9 ~ "High School/GED",
+      education_level %in% 10:12 ~ "College/Associate",
+      education_level >= 13 ~ "Bachelors or Higher",
+      TRUE ~ NA_character_
+    ),
+    education_level = factor(education_level, levels = c("Less than HS", "High School/GED", "College/Associate", "Bachelors or Higher")),
+    
+    # party identification
+    party_id = case_when(
+      party_id == 1 ~ "Democrat",
+      party_id == 2 ~ "Republican",
+      party_id %in% c(0,3) ~ "Independent/None",
+      TRUE ~ "Other"
+    )
+    
+  )
+
+# removing hispanic, race summary/code, mena_origin
+anes_cleaned <- anes_cleaned %>%
+  select(-c(hispanic, race_summary, mena_origin, race_code))
+# printing cleaned set and column names (8 columns)
+anes_cleaned
+colnames(anes_cleaned)
+```
+
+
+```{r}
+save.image("12_cleanedElectionData.RData")
+  
+```
+
+
