@@ -6,7 +6,12 @@ output: html_document
 ```{r}
 source("00_requirements.R")
 
-anes_raw <- read_csv("anes.csv")
+keep_cols <- c(
+  "V242067", "V242075", "V241551", "V241499", "V241501x",
+  "V241502", "V241463", "V241458x", "V241221", "V242337"
+)
+
+anes_raw <- read_csv("anes.csv", col_select = all_of(keep_cols))
 
 #renaming relevant columns and selecting them to go into cleaned set
 anes_cleaned <- anes_raw %>%
@@ -68,8 +73,8 @@ anes_cleaned <- anes_raw %>%
       mena_origin == 1 ~ 5, # mena = 5 (mena = middle eastern/north african)
       race_summary == 1 ~ 1, #white = 1
       race_summary == 2 ~ 2, # black = black 
-      race_summary == 4 ~ 3, # hispanic = 3
-      race_summary == 3 ~ 4, # asian = 4
+      race_summary == 3 ~ 3, # hispanic = 3
+      race_summary == 4 ~ 4, # asian = 4
       race_summary >= 5 ~ 6, # multi/other = 6
       TRUE ~ NA_real_
     ),
@@ -88,10 +93,10 @@ anes_cleaned <- anes_raw %>%
     
     #education levels
     education_level = case_when(
-      education_level <= 8 ~ "Less than HS",
+      education_level %in% 1:8 ~ "Less than HS",
       education_level == 9 ~ "High School/GED",
       education_level %in% 10:12 ~ "College/Associate",
-      education_level >= 13 ~ "Bachelors or Higher",
+      education_level %in% 13:16 ~ "Bachelors or Higher",
       TRUE ~ NA_character_
     ),
     education_level = factor(education_level, levels = c("Less than HS", "High School/GED", "College/Associate", "Bachelors or Higher")),
@@ -116,8 +121,7 @@ colnames(anes_cleaned)
 
 
 ```{r}
-save.image("12_cleanedElectionData.RData")
-  
+save(anes_cleaned, file = "12_cleanedElectionData.RData")
 ```
 
 

@@ -1,0 +1,66 @@
+---
+title: "13_Analysis"
+output: html_document
+---
+```{r}
+ library(tidyverse)
+ load("12_cleanedElectionData.RData")
+```
+
+```{r}
+   class_levels <- c("Lower Class", "Working Class", "Middle Class", "Upper Class")
+
+   class_data <- anes_cleaned %>%
+     filter(!is.na(social_class)) %>%
+     mutate(social_class = factor(social_class, levels = class_levels))
+
+   ggplot(class_data, aes(x = social_class, fill = vote_pres)) +
+     geom_bar(position = "fill") +
+     scale_y_continuous(labels = scales::percent) +
+     scale_fill_manual(values = c(Democrat = "#2166AC", Republican = "#B2182B")) +
+     labs(
+       title = "2024 Presidential Vote by Social Class",
+       x = "Self-Reported Social Class",
+       y = "Share of Respondents",
+       fill = "Presidential Vote"
+     ) +
+     theme_minimal()
+```
+
+```{r}
+   class_data %>%
+     count(social_class, vote_pres) %>%
+     group_by(social_class) %>%
+     mutate(pct = n / sum(n))
+
+   chisq.test(table(class_data$social_class, class_data$vote_pres))
+```
+
+Analysis: Vote choice differed across self-reported social class in this sample, and the association was statistically significant, χ²(3) ≈ 64, p < .001. Working-class respondents were the only group with a Republican majority (51.3%). Republican support was lower among lower-class (43.9%) and middle-class (41.8%) respondents and lowest among upper-class respondents (23.8%). The pattern was not a steady trend across class levels: Republican support rose from the lower class to the working class, then fell at each higher level.
+
+These results show an association, not a causal effect, and social class is self-reported. They are also unweighted and include only respondents who reported voting for a Democratic or Republican presidential candidate, so they should not be generalized to all U.S. voters.
+
+```{r}
+age_data <- anes_cleaned %>% filter(!is.na(age))
+
+ggplot(age_data, aes(x = vote_pres, y = age, fill = vote_pres)) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_fill_manual(values = c(Democrat = "#2166AC", Republican = "#B2182B")) +
+  labs(
+    title = "Age Distribution by 2024 Presidential Vote",
+    x = "Presidential Vote",
+    y = "Age"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+age_data %>%
+  group_by(vote_pres) %>%
+  summarise(n = n(), mean_age = mean(age), median_age = median(age), sd_age = sd(age))
+
+t.test(age ~ vote_pres, data = age_data)
+```
+Analysis: Republican voters in this sample were slightly older on average than Democratic voters (M = 56.12 vs. 54.86 years), and their median age was also higher (59 vs. 57). A Welch two-sample t-test found this difference statistically significant, t(3290.9) = -2.21, p = .027. The estimated difference was small, however, at about 1.26 years (95% CI [0.14, 2.38], with Republicans older). The boxplot also shows that the two age distributions overlap heavily and have similar spreads, so age alone does not clearly separate the two groups of voters.
+
+This result shows an association, not a causal effect. It is unweighted and excludes respondents with missing age, so it should not be generalized to all U.S. voters.
