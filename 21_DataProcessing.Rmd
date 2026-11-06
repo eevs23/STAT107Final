@@ -1,0 +1,62 @@
+---
+title: "21_DataProcessing"
+output: html_document
+---
+
+## Load the cleaned data
+
+We load the packages and the cleaned data set `anes_cleaned`, which was saved at the end of `11_DataCleaning.Rmd`.
+
+```{r load}
+source("00_requirements.R")
+load("12_cleanedElectionData.RData")
+```
+
+## Set the order of the categorical variables
+
+`social_class`, `gender` and `party_id` are stored as character variables after cleaning. We convert them to factors with a fixed order of levels, so that every plot and table lists the categories in a meaningful order (for example, from lower class to upper class) instead of alphabetical order. `race` and `education_level` were already converted to ordered factors during cleaning.
+
+```{r factors}
+anes_processed <- anes_cleaned %>%
+  mutate(
+    social_class = factor(social_class,
+                          levels = c("Lower Class", "Working Class",
+                                     "Middle Class", "Upper Class")),
+    gender = factor(gender,
+                    levels = c("Man", "Woman", "Nonbinary", "Other")),
+    party_id = factor(party_id,
+                      levels = c("Democrat", "Independent/None",
+                                 "Republican", "Other"))
+  )
+```
+
+## Create age groups
+
+Age is a numeric variable. To compare vote choice across stages of life, we also group age into four categories: 18-29, 30-44, 45-59 and 60 and older. Respondents with a missing age get a missing age group.
+
+```{r age-group}
+anes_processed <- anes_processed %>%
+  mutate(age_group = cut(age,
+                         breaks = c(17, 29, 44, 59, Inf),
+                         labels = c("18-29", "30-44", "45-59", "60+")))
+
+# check the new variable: number of respondents in each age group
+anes_processed %>% count(age_group)
+```
+
+## Check the processed data
+
+We check that the processed data has the same number of respondents as the cleaned data and that the new factor levels are in the intended order.
+
+```{r check}
+nrow(anes_processed)
+str(anes_processed)
+```
+
+## Save the processed data
+
+The processed data set is saved so that `31_DataVisualization.Rmd` and `FinalReport.Rmd` can load it directly.
+
+```{r save}
+save(anes_processed, file = "22_processedElectionData.RData")
+```

@@ -1,0 +1,147 @@
+---
+title: "31_DataVisulization"
+output: html_document
+---
+
+## Setup
+
+```{r setup}
+source("00_requirements.R")
+source("01_funct_Plots.R")
+load("22_processedElectionData.RData")
+```
+
+## Overall vote
+
+```{r overall}
+anes_processed %>%
+  count(vote_pres) %>%
+  mutate(pct = round(100 * n / sum(n), 1))
+```
+
+Analysis: Of the 3,603 respondents who reported voting for a Democratic or Republican presidential candidate, 2,015 (55.9%) voted Democratic and 1,588 (44.1%) voted Republican, so the two outcome groups are reasonably balanced and are not a rare-event problem for future models.
+
+## Social class
+
+```{r class-plot}
+plot_vote_share(anes_processed, "social_class",
+                "2024 Presidential Vote by Social Class", "Self-Reported Social Class")
+```
+
+```{r class-test}
+summarize_vote_by(anes_processed, "social_class")
+test_vote_association(anes_processed, "social_class")
+```
+
+Analysis: Vote choice differed across self-reported social class in this sample, and the association was statistically significant, χ²(3) ≈ 64, p < .001. Working-class respondents were the only group with a Republican majority (51.3%). Republican support was lower among lower-class (43.9%) and middle-class (41.8%) respondents and lowest among upper-class respondents (23.8%). The pattern was not a steady trend across class levels: Republican support rose from the lower class to the working class, then fell at each higher level.
+
+These results show an association, not a causal effect, and social class is self-reported. They are also unweighted and include only respondents who reported voting for a Democratic or Republican presidential candidate, so they should not be generalized to all U.S. voters.
+
+## Age
+
+```{r age-boxplot}
+ggplot(filter(anes_processed, !is.na(age)),
+       aes(x = vote_pres, y = age, fill = vote_pres)) +
+  geom_boxplot(show.legend = FALSE) +
+  scale_fill_manual(values = vote_colors) +
+  labs(
+    title = "Age Distribution by 2024 Presidential Vote",
+    x = "Presidential Vote",
+    y = "Age"
+  ) +
+  theme_minimal()
+```
+
+```{r age-test}
+anes_processed %>%
+  filter(!is.na(age)) %>%
+  group_by(vote_pres) %>%
+  summarise(n = n(), mean_age = mean(age), median_age = median(age), sd_age = sd(age))
+
+t.test(age ~ vote_pres, data = anes_processed)
+```
+
+Analysis: Republican voters in this sample were slightly older on average than Democratic voters (M = 56.12 vs. 54.86 years), and their median age was also higher (59 vs. 57). A Welch two-sample t-test found this difference statistically significant, t(3290.9) = -2.21, p = .027. The estimated difference was small, however, at about 1.26 years (95% CI [0.14, 2.38], with Republicans older). The boxplot also shows that the two age distributions overlap heavily and have similar spreads, so age alone does not clearly separate the two groups of voters.
+
+This result shows an association, not a causal effect. It is unweighted and excludes respondents with missing age, so it should not be generalized to all U.S. voters.
+
+```{r age-density}
+ggplot(filter(anes_processed, !is.na(age)), aes(x = age, fill = vote_pres)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = vote_colors) +
+  labs(
+    title = "Age Density by 2024 Presidential Vote",
+    x = "Age",
+    y = "Density",
+    fill = "Presidential Vote"
+  ) +
+  theme_minimal()
+```
+
+Analysis: The two age densities overlap heavily, which agrees with the boxplot and the small difference in mean age. Democratic voters have somewhat more weight among respondents in their 20s and 30s, and Republican voters have somewhat more weight at older ages. Both densities have a spike at age 80, where 245 respondents are recorded, which suggests that ages 80 and older are grouped at 80 in the survey data.
+
+## Age group
+
+```{r age-group}
+plot_vote_share(anes_processed, "age_group",
+                "2024 Presidential Vote by Age Group", "Age Group")
+summarize_vote_by(anes_processed, "age_group")
+test_vote_association(anes_processed, "age_group")
+```
+
+Analysis: Grouping age shows a clearer pattern than the mean difference alone. The Democratic share was highest among respondents aged 18-29 (64.1%) and fell with each older group (57.6%, 55.8% and 54.6%), and the association was statistically significant, χ²(3) ≈ 8.8, p = .032. The age effect is modest compared with the differences seen for race, education and party identification below.
+
+## Race and ethnicity
+
+```{r race}
+plot_vote_share(anes_processed, "race",
+                "2024 Presidential Vote by Race and Ethnicity", "Race / Ethnicity")
+summarize_vote_by(anes_processed, "race")
+test_vote_association(anes_processed, "race")
+```
+
+Analysis: Vote choice differed strongly by race and ethnicity, χ²(5) ≈ 178.1, p < .001. Black respondents were overwhelmingly Democratic (92.3%). Hispanic (64.8%), Asian (65.4%) and Middle Eastern/North African (62.7%) respondents leaned Democratic, while White respondents were nearly evenly split (51.2% Democratic, 48.8% Republican) and Multiracial/Other respondents were close to even (55.2% Democratic). The Asian, Middle Eastern/North African and Multiracial/Other groups are small (n = 107, 67 and 125), so their percentages are less precise than those of the larger groups.
+
+## Gender
+
+```{r gender}
+plot_vote_share(anes_processed, "gender",
+                "2024 Presidential Vote by Gender", "Gender")
+summarize_vote_by(anes_processed, "gender")
+test_vote_association(anes_processed, "gender")
+```
+
+To check that the result is not driven by the very small Nonbinary and Other groups, we repeat the test using only men and women.
+
+```{r gender-man-woman}
+test_vote_association(filter(anes_processed, gender %in% c("Man", "Woman")) %>%
+                        droplevels(), "gender")
+```
+
+Analysis: Vote choice differed by gender, χ²(3) ≈ 60.6, p < .001. Women were more likely than men to vote Democratic (60.7% vs. 49.8%), and men were split almost evenly between the two parties. A test using only men and women gave the same conclusion, χ²(1) ≈ 41.3, p < .001, so the result is not driven by the very small groups. The Nonbinary (n = 28) and Other (n = 26) groups are too small to estimate reliably, and "Other" collects every response that was not coded as man, woman or nonbinary, so these two groups should not be interpreted on their own.
+
+## Education
+
+```{r education}
+plot_vote_share(anes_processed, "education_level",
+                "2024 Presidential Vote by Education Level", "Education Level")
+summarize_vote_by(anes_processed, "education_level")
+test_vote_association(anes_processed, "education_level")
+```
+
+Analysis: Vote choice differed by education level, χ²(3) ≈ 163.5, p < .001. Respondents with a bachelor's degree or higher were the only group with a clear Democratic majority (65.8%). The Democratic share was below 50% in every other group (43.0% for less than high school, 39.7% for high school/GED and 47.9% for college/associate). The pattern is not a steady trend, because the lowest Democratic share is in the high school/GED group rather than the less-than-high-school group, but the less-than-high-school group is small (n = 107). The main contrast is between college graduates and everyone else.
+
+## Party identification
+
+```{r party}
+plot_vote_share(anes_processed, "party_id",
+                "2024 Presidential Vote by Party Identification", "Party Identification")
+summarize_vote_by(anes_processed, "party_id")
+test_vote_association(anes_processed, "party_id")
+```
+
+Analysis: Party identification was very strongly related to vote choice, χ²(3) ≈ 2189.0, p < .001. Of the Democratic identifiers, 97.7% voted Democratic, and of the Republican identifiers, 93.5% voted Republican. Independent/None respondents split 56.8% Democratic and 43.2% Republican. Only 111 respondents voted against their party (78 Republicans voted Democratic and 33 Democrats voted Republican). Because party identification almost reproduces the vote, it will dominate any model that includes it, so later models should be fit both with and without it to see what demographics explain on their own.
+
+## Summary
+
+All of the results above are associations, not causal effects. They are unweighted, they exclude respondents with a missing value for the variable being compared, and they include only respondents who reported voting for a Democratic or Republican presidential candidate, so they should not be generalized to all U.S. voters.
