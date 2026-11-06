@@ -1,0 +1,197 @@
+---
+title: Who Voted for Whom in 2024? Demographics, Social Class and Party Identification
+  in U.S. Presidential Vote Choice
+subtitle: "STAT 107 Half-Way Project Report"
+date: "November 6, 2026"
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    number_sections: true
+fontsize: 11pt
+geometry: margin=1in
+abstract: "This project uses data from the 2024 American National Election Studies
+  (ANES) to ask which demographic characteristics and political identities are associated
+  with voting for the Democratic or the Republican candidate in the 2024 U.S. presidential
+  election. After cleaning the survey data, we kept the 3,603 respondents who reported
+  voting for one of the two major-party candidates and studied their age, gender,
+  race and ethnicity, education, self-reported social class and party identification.
+  Preliminary visualizations and tests show that vote choice differs significantly
+  across every characteristic we examined, although the age difference is small. Party
+  identification has by far the strongest relationship with vote choice, since about
+  98% of Democratic identifiers and 94% of Republican identifiers voted for their
+  party's candidate. Among the demographic characteristics, race, education and gender
+  show the largest differences, while age has a small effect and social class follows
+  a non-linear pattern. These results are associations in an unweighted sample and
+  do not show causation. Next, we plan to fit logistic regression models with and
+  without party identification, evaluate their predictive accuracy with cross-validation,
+  and check the robustness of the results with survey weights.\n"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 6.5, fig.height = 3.4, fig.align = "center")
+source("00_requirements.R")
+source("01_funct_Plots.R")
+load("12_cleanedElectionData.RData")
+```
+
+# Introduction
+
+Every presidential election raises the same question: who votes for which candidate, and why? Differences in vote choice across groups of voters are central to how political scientists, journalists and campaigns understand an election. Our project studies this question for the 2024 U.S. presidential election. We ask which characteristics of a voter (age, gender, race and ethnicity, education, self-reported social class and party identification) are associated with voting for the Democratic candidate rather than the Republican candidate, and how well these characteristics together can predict a voter's choice.
+
+The analysis has two goals. The first is to test hypotheses about individual characteristics, for example whether vote choice differs by education or whether older voters differ from younger voters. The second is to build a classification model that predicts the two-party vote from voter characteristics and to measure how accurate it is. The results could help students and researchers of elections understand which divisions between voters are large and which are small, and they show how much of vote choice can be explained by demographics alone. An important part of the project is to compare models with and without party identification, because party identification is so closely tied to vote choice that it can hide the role of the other characteristics.
+
+This half-way report describes the data and the cleaning steps, presents preliminary visualizations and tests for each characteristic, and lays out the models and further visualizations we plan to complete for the final report.
+
+# Executive Summary
+
+- Of the `r format(nrow(anes_cleaned), big.mark = ",")` respondents who voted for a Democratic or Republican presidential candidate, 55.9% voted Democratic and 44.1% voted Republican, so the two outcome groups are reasonably balanced.
+- Party identification is almost a direct copy of the vote: 97.7% of Democratic identifiers voted Democratic and 93.5% of Republican identifiers voted Republican. Because of this, models will be fit both with and without it.
+- Among the demographic characteristics, race, education and gender show the largest differences in vote choice (for example, 92.3% of Black respondents voted Democratic, 65.8% of respondents with a bachelor's degree or higher voted Democratic compared with 39.7% to 47.9% in the other education groups, and 60.7% of women voted Democratic compared with 49.8% of men). All three differences are statistically significant (p < .001).
+- Social class does not follow a steady trend: working-class respondents were the only group with a Republican majority (51.3%), and upper-class respondents were the most Democratic (76.2%). The age difference is small: Republican voters were only about 1.3 years older on average, although respondents aged 18 to 29 were more Democratic (64.1%) than respondents aged 60 and older (54.6%).
+- Next, we will fit logistic regression models, evaluate them with cross-validation and check the results using survey weights and alternative handling of missing data.
+
+# Data
+
+## Source and variables
+
+The data come from the American National Election Studies (ANES) 2024 Time Series Study (https://electionstudies.org/), a survey of U.S. adults conducted before and after the 2024 election. The survey was not generated by a randomized experiment or a simulation, so all of our results describe associations among survey responses. The raw file `anes.csv` contains a very large number of survey questions. The file `11_DataCleaning.Rmd` keeps ten of them and renames them. After cleaning, the analysis data set `anes_cleaned` has `r format(nrow(anes_cleaned), big.mark = ",")` observations (respondents) and `r ncol(anes_cleaned)` variables, described below.
+
+| Variable | Role | Description | Values after cleaning |
+|:-------------------|:---------|:----------------------------|:-------------------------------------|
+| `vote_pres` | Outcome | Presidential vote in 2024 | Democrat, Republican |
+| `vote_house` | Secondary outcome | U.S. House vote in 2024 | Democrat, Republican, Other |
+| `age` | Predictor | Age in years | 18 to 80 (ages 80 and older appear to be recorded as 80) |
+| `gender` | Predictor | Gender | Man, Woman, Nonbinary, Other |
+| `race` | Predictor | Race and ethnicity | White, Black, Hispanic, Asian, Middle Eastern/North African, Multiracial/Other |
+| `education_level` | Predictor | Highest level of education | Less than HS, High School/GED, College/Associate, Bachelors or Higher |
+| `social_class` | Predictor | Self-reported social class | Lower Class, Working Class, Middle Class, Upper Class |
+| `party_id` | Predictor | Party identification | Democrat, Republican, Independent/None, Other |
+
+## Cleaning steps
+
+The cleaning steps in `11_DataCleaning.Rmd` were the following.
+
+1. Select the ten survey variables of interest and give them readable names.
+2. Keep only respondents who reported voting for the Democratic or the Republican candidate for president. This removes non-voters, voters for other candidates and respondents with missing responses, and it makes the outcome a two-category variable.
+3. Recode the numeric survey codes into labeled categories for the House vote, gender, social class, education and party identification. For the House vote, gender and party identification, any code that does not belong to a named category is grouped as "Other".
+4. Combine the ANES race summary variable and the Middle Eastern/North African indicator into one race and ethnicity variable with six categories (respondents who identified as Middle Eastern/North African are placed in that category), and set negative age codes (refusals) to missing.
+5. Convert the education and race variables to factors with a fixed order of levels, and save the cleaned data as `12_cleanedElectionData.RData`.
+
+## Missing values
+
+Only four variables have missing values after cleaning. Missing values are left as missing and the respondent is left out only of the comparisons that involve that variable.
+
+```{r missing}
+missing_counts <- colSums(is.na(anes_cleaned))
+kable(data.frame(Variable = names(missing_counts), Missing = as.integer(missing_counts)))
+```
+
+# Visualization
+
+All plots below show the share of respondents who voted Democratic (blue) and Republican (red) within each group. The number of respondents in each group is printed under its label, because the percentages of small groups are less precise. The helper functions in `01_funct_Plots.R` produce the plots and tests, and the full set of plots, tables and tests is in `13_Analysis.Rmd`. The table below gives the chi-square test of independence between each categorical characteristic and the presidential vote.
+
+```{r tests}
+test_vars <- c("social_class", "race", "gender", "education_level", "party_id")
+test_results <- lapply(test_vars, function(v) test_vote_association(anes_cleaned, v))
+kable(data.frame(
+  Variable = test_vars,
+  ChiSquare = round(sapply(test_results, function(r) unname(r$statistic)), 1),
+  df = sapply(test_results, function(r) unname(r$parameter)),
+  p_value = format.pval(sapply(test_results, function(r) r$p.value), digits = 2, eps = 0.001)
+))
+```
+
+## Party identification
+
+```{r party}
+plot_vote_share(anes_cleaned, "party_id",
+                "2024 Presidential Vote by Party Identification", "Party Identification",
+                order = c("Democrat", "Independent/None", "Republican", "Other"))
+```
+
+Party identification is very strongly related to vote choice. Almost all Democratic identifiers (97.7%) and Republican identifiers (93.5%) voted for their own party's candidate, and Independent/None respondents split 56.8% Democratic and 43.2% Republican. Only 111 respondents voted against their party. This relationship is so strong that it suggests treating party identification separately from the demographic characteristics in the models.
+
+## Race and ethnicity
+
+```{r race}
+plot_vote_share(anes_cleaned, "race",
+                "2024 Presidential Vote by Race and Ethnicity", "Race / Ethnicity")
+```
+
+Black respondents were overwhelmingly Democratic (92.3%), Hispanic, Asian and Middle Eastern/North African respondents leaned Democratic (64.8%, 65.4% and 62.7%), and White respondents were nearly evenly split (51.2% Democratic). The differences across groups are large and statistically significant. The Asian, Middle Eastern/North African and Multiracial/Other groups are small (107, 67 and 125 respondents), so their percentages are less certain.
+
+## Education
+
+```{r education}
+plot_vote_share(anes_cleaned, "education_level",
+                "2024 Presidential Vote by Education Level", "Education Level")
+```
+
+Respondents with a bachelor's degree or higher were the only group with a clear Democratic majority (65.8%); the Democratic share was between 39.7% and 47.9% in every other group. The pattern is not a smooth trend, because the lowest Democratic share is in the high school/GED group and the less-than-high-school group is small (107 respondents). The main contrast is between college graduates and everyone else.
+
+## Gender
+
+```{r gender}
+plot_vote_share(anes_cleaned, "gender",
+                "2024 Presidential Vote by Gender", "Gender",
+                order = c("Man", "Woman", "Nonbinary", "Other"))
+```
+
+Women were more likely to vote Democratic than men (60.7% compared with 49.8%), and this gap is statistically significant even when the test is limited to men and women. The Nonbinary (28 respondents) and Other (26 respondents) groups are too small to interpret on their own, and "Other" includes every response that was not coded as man, woman or nonbinary.
+
+## Social class
+
+```{r class}
+plot_vote_share(anes_cleaned, "social_class",
+                "2024 Presidential Vote by Social Class", "Self-Reported Social Class",
+                order = c("Lower Class", "Working Class", "Middle Class", "Upper Class"))
+```
+
+The relationship between social class and vote choice is not a steady trend. The Republican share rises from the lower class (43.9%) to the working class (51.3%), which is the only group with a Republican majority, and then falls for the middle class (41.8%) and the upper class (23.8%). Social class is self-reported, and it is related to education, so it is unclear how much of this pattern remains once education and the other characteristics are taken into account.
+
+## Age
+
+```{r age}
+age_group_data <- anes_cleaned %>%
+  filter(!is.na(age)) %>%
+  mutate(age_group = cut(age, breaks = c(17, 29, 44, 59, Inf),
+                         labels = c("18-29", "30-44", "45-59", "60+")))
+
+plot_vote_share(age_group_data, "age_group",
+                "2024 Presidential Vote by Age Group", "Age Group")
+```
+
+Age has the weakest relationship of the characteristics we examined. Republican voters were slightly older on average than Democratic voters (mean age 56.1 compared with 54.9 years). A Welch two-sample t-test found this difference of about 1.3 years to be statistically significant, $t(3290.9) = -2.21$, $p = .027$, and the age distributions overlap heavily. Grouping age shows that the Democratic share is highest among respondents aged 18 to 29 (64.1%) and falls with each older group (57.6%, 55.8% and 54.6%), $\chi^2(3) \approx 8.8$, $p = .032$.
+
+## What the visualizations suggest and planned further visualizations
+
+Together, the plots suggest that vote choice is closely tied to party identification, strongly related to race, education and gender, and only weakly related to age. They also show that the characteristics are probably related to each other (for example, education and social class), so it is not clear from one-variable plots which differences remain when the other characteristics are held constant. This is the reason for the multivariable models in the next section. For the final report we plan to add the following visualizations.
+
+- A heat map or faceted bar chart of the Democratic share by race and education, and by gender and age group, to look for combinations of characteristics that matter more together than separately.
+- A coefficient (odds ratio) plot with confidence intervals for the logistic regression models, with and without party identification.
+- Plots of the predicted probability of a Democratic vote across age, education and race for typical respondents.
+- An ROC curve and a confusion matrix chart for the cross-validated predictions.
+- A comparison of the presidential vote and the House vote, to look at respondents who voted for different parties in the two races.
+
+# Analysis
+
+## Models
+
+The main model will be a logistic regression of the presidential vote (Democrat = 1, Republican = 0) on the voter characteristics. We will start with a demographic model that uses age, gender, race and ethnicity, education and social class (Model 1), and then add party identification (Model 2). Likelihood ratio tests and AIC will be used to compare the models, and odds ratios with 95% confidence intervals will be used to interpret them. We will also test interactions that the plots suggest, such as race by education and gender by age group, and compare a simpler model with a more flexible classifier such as a classification tree or a random forest to see whether non-linear patterns improve prediction.
+
+## Evaluation
+
+To measure how well the models predict vote choice, we will use 10-fold cross-validation (or a training and test split) and report accuracy, a confusion matrix and the area under the ROC curve. The baseline for comparison is the accuracy of always predicting the larger group, which is 55.9% (Democratic). The comparison between Model 1 and Model 2 will show how much of vote choice demographics alone can explain.
+
+## Robustness and data issues
+
+- **Missing data.** A complete-case analysis would use 3,355 respondents for the demographic model. We will compare it with multiple imputation to see whether leaving out respondents with missing values changes the results.
+- **Small groups.** The Nonbinary and Other gender groups and some race groups have few respondents, so we will check whether combining them or dropping them changes the conclusions.
+- **Survey weights.** The results so far are unweighted. The ANES provides survey weights, and we plan to repeat the main models with the weights as a sensitivity check.
+- **Limitations.** The data are self-reported, they cover only respondents who reported voting for a Democratic or Republican candidate, and an observational survey cannot show that any characteristic causes a vote choice.
+
+## Expected outcomes
+
+We expect party identification to be by far the strongest predictor of vote. Among the demographic characteristics, we expect race (especially Black respondents), education (a bachelor's degree or higher) and gender to remain significant after adjusting for the other variables, and we expect the age effect to be small. We expect the non-linear social class pattern to become weaker once education is included, which would suggest that social class partly reflects education. If the demographic model predicts vote only slightly better than the 55.9% baseline while the model with party identification predicts it very well, this would show that these demographic characteristics alone are limited predictors of individual vote choice.
