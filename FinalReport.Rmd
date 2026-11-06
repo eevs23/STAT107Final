@@ -189,3 +189,8 @@ To measure how well the models predict vote choice, we will use 10-fold cross-va
 ## Expected outcomes
 
 We expect party identification to be by far the strongest predictor of vote. Among the demographic characteristics, we expect race (especially Black respondents), education (a bachelor's degree or higher) and gender to remain significant after adjusting for the other variables, and we expect the age effect to be small. We expect the non-linear social class pattern to become weaker once education is included, which would suggest that social class partly reflects education. If the demographic model predicts vote only slightly better than the 55.9% baseline while the model with party identification predicts it very well, this would show that these demographic characteristics alone are limited predictors of individual vote choice.
+
+## Contributions 
+Eva: Wrote the Readme files and did the data cleaning and some of the processing for the dataset. Created 11_DataCleaning and 12_RData and 00_requirements. Found the dataset, created the repository, proposed the idea for the project.
+Dennis: 
+Kenneth: 
