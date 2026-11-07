@@ -194,7 +194,7 @@ We expect party identification to be by far the strongest predictor of vote. Amo
 
 ## Contributions 
 Eva: Wrote the Readme files and did the data cleaning and some of the processing for the dataset. Created 11_DataCleaning and 12_RData and 00_requirements. Found the dataset, created the repository, proposed the idea for the project. Added some explanation for dropped/missing values per TA instruction. 
-Dennis: 
+Dennis: I contributed to the data analysis in 13_Analysis.Rmd. I also restructured the project workflow by separating the data processing and data visualization steps into their own files (21_DataProcessing.Rmd and 31_DataVisualization.Rmd), which made the pipeline easier to follow and maintain. In addition, I made several improvements to the data cleaning file (11_DataCleaning.Rmd) and fixed issues in the final report (FinalReport.Rmd)
 Kenneth: 
 
 ## Github Link : https://github.com/eevs23/STAT107Final
