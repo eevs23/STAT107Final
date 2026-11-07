@@ -33,7 +33,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 6.5, fig.height = 3.4, fig.align = "center")
 source("00_requirements.R")
 source("01_funct_Plots.R")
-load("12_cleanedElectionData.RData")
+load("22_processedElectionData.RData")
 ```
 
 # Introduction
